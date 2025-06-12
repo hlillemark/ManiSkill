@@ -1191,7 +1191,10 @@ class BaseEnv(gym.Env):
         self._human_render_cameras = dict()
         self.scene = None
         self._hidden_objects = []
-        gc.collect() # force gc to collect which releases most GPU memory
+        try:
+            gc.collect() # force gc to collect which releases most GPU memory
+        except:
+            pass
 
     def close(self):
         self._clear()

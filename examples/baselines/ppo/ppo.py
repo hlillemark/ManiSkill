@@ -102,6 +102,8 @@ class Args:
     save_train_video_freq: Optional[int] = None
     """frequency to save training videos in terms of iterations"""
     finite_horizon_gae: bool = False
+    num_hidden: int = 3
+    """number of hidden layers for actor and critic networks"""
 
 
     # to be filled in runtime
@@ -119,26 +121,51 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 
 class Agent(nn.Module):
-    def __init__(self, envs):
+    def __init__(self, envs, num_hidden=3):
         super().__init__()
-        self.critic = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 256)),
-            nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
-            nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
-            nn.Tanh(),
-            layer_init(nn.Linear(256, 1)),
-        )
-        self.actor_mean = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 256)),
-            nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
-            nn.Tanh(),
-            layer_init(nn.Linear(256, 256)),
-            nn.Tanh(),
-            layer_init(nn.Linear(256, np.prod(envs.single_action_space.shape)), std=0.01*np.sqrt(2)),
-        )
+        
+        # Build critic network
+        critic_layers = []
+        input_dim = np.array(envs.single_observation_space.shape).prod()
+        
+        # First layer
+        critic_layers.extend([
+            layer_init(nn.Linear(input_dim, 256)),
+            nn.Tanh()
+        ])
+        
+        # Hidden layers
+        for _ in range(num_hidden - 1):
+            critic_layers.extend([
+                layer_init(nn.Linear(256, 256)),
+                nn.Tanh()
+            ])
+        
+        # Output layer
+        critic_layers.append(layer_init(nn.Linear(256, 1)))
+        
+        self.critic = nn.Sequential(*critic_layers)
+        
+        # Build actor network
+        actor_layers = []
+        
+        # First layer
+        actor_layers.extend([
+            layer_init(nn.Linear(input_dim, 256)),
+            nn.Tanh()
+        ])
+        
+        # Hidden layers
+        for _ in range(num_hidden - 1):
+            actor_layers.extend([
+                layer_init(nn.Linear(256, 256)),
+                nn.Tanh()
+            ])
+        
+        # Output layer
+        actor_layers.append(layer_init(nn.Linear(256, np.prod(envs.single_action_space.shape)), std=0.01*np.sqrt(2)))
+        
+        self.actor_mean = nn.Sequential(*actor_layers)
         self.actor_logstd = nn.Parameter(torch.ones(1, np.prod(envs.single_action_space.shape)) * -0.5)
 
     def get_value(self, x):
@@ -241,7 +268,7 @@ if __name__ == "__main__":
     else:
         print("Running evaluation")
 
-    agent = Agent(envs).to(device)
+    agent = Agent(envs, num_hidden=args.num_hidden).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
