@@ -41,6 +41,35 @@ pip install --upgrade mani_skill
 pip install torch
 ```
 
+## Custom banana in bin expt:
+```bash
+python demo_random_actions.py
+
+# Train baseline 
+python -m examples.baselines.ppo.ppo \
+    --env_id="PlaceBananaInBin-v1" \
+    --num_envs=2048 \
+    --update_epochs=8 \
+    --num_minibatches=32 \
+    --total_timesteps=200_000_000 \
+    --eval_freq=10 \
+    --num_steps=50 \
+    --exp_name="banana_ppo_baseline" \
+    --num_hidden=3 \
+    --seed=1
+
+python plot_single_exp_training_curves.py \
+    --log_dir ./runs/banana_ppo_baseline \
+    --save_path ./baseline_success_rate_and_return.png
+  
+# Train ablation on depth of nn module
+bash run_parallel_ablation.sh
+python plot_multi_exp_training_curves.py \ 
+    --log_dir ./runs/ \
+    --save_path ./ablation_success_rate_and_return.png
+```
+
+
 Finally you also need to set up Vulkan with [instructions here](https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/installation.html#vulkan)
 
 For more details about installation (e.g. from source, or doing troubleshooting) see [the documentation](https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/installation.html
