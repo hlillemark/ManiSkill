@@ -33,8 +33,13 @@ def load_tensorboard_data(log_dir, tags):
             data[tag] = (steps, values)
     return data
 
-def find_experiment_runs(base_dir):
-    """Find all experiment runs matching the pattern banana_*_layers_trial_*."""
+def find_experiment_runs(base_dir, hidden_layers=None):
+    """Find all experiment runs matching the pattern banana_*_layers_trial_*.
+    
+    Args:
+        base_dir: Base directory containing experiment runs
+        hidden_layers: Optional list of hidden layer numbers to filter for
+    """
     pattern = re.compile(r'banana_(\d+)_layers_trial_(\d+)')
     runs = defaultdict(list)
     
@@ -42,6 +47,9 @@ def find_experiment_runs(base_dir):
         match = pattern.match(item)
         if match:
             num_hidden = int(match.group(1))
+            # Skip if hidden_layers is specified and this num_hidden is not in it
+            if hidden_layers is not None and num_hidden not in hidden_layers:
+                continue
             trial_num = int(match.group(2))
             runs[num_hidden].append((trial_num, os.path.join(base_dir, item)))
     
@@ -155,10 +163,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--log_dir", type=str, required=True, help="Base directory containing experiment runs")
     parser.add_argument("--save_path", type=str, default=None, help="Path to save the figure (optional)")
+    parser.add_argument("--hidden_layers", type=int, nargs="+", default=None, 
+                      help="Optional list of hidden layer numbers to plot (e.g., '--hidden_layers 3 4 5')")
     args = parser.parse_args()
     
     # Find all experiment runs
-    runs_dict = find_experiment_runs(args.log_dir)
+    runs_dict = find_experiment_runs(args.log_dir, args.hidden_layers)
     print(f"Found runs for configurations: {sorted(runs_dict.keys())}")
     
     # Aggregate data
